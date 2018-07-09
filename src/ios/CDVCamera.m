@@ -345,7 +345,28 @@ static NSString* toBase64(NSData* data) {
 {
     NSData* data = nil;
     
-    
+    if (options.sourceType == UIImagePickerControllerSourceTypeCamera && [AVCaptureDevice respondsToSelector:@selector(authorizationStatusForMediaType:)]) {
+        AVAuthorizationStatus authStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
+        if (authStatus == AVAuthorizationStatusDenied ||
+            authStatus == AVAuthorizationStatusRestricted) {
+            // If iOS 8+, offer a link to the Settings app
+            NSString* settingsButton = (&UIApplicationOpenSettingsURLString != NULL)
+                ? NSLocalizedString(@"Settings", nil)
+                : nil;
+
+            // Denied; show an alert
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[[UIAlertView alloc] initWithTitle:[[NSBundle mainBundle]
+                                                     objectForInfoDictionaryKey:@"CFBundleDisplayName"]
+                                            message:NSLocalizedString(@"Access to the camera has been prohibited; please enable it in the Settings app to continue.", nil)
+                                           delegate:self
+                                  cancelButtonTitle:NSLocalizedString(@"OK", nil)
+                                  otherButtonTitles:settingsButton, nil] show];
+            });
+            return data;
+        }
+    }
+ 
     switch (options.encodingType) {
         case EncodingTypePNG:
             data = UIImagePNGRepresentation(image);
